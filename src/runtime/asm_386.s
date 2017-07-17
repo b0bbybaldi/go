@@ -26,32 +26,6 @@ TEXT runtime·rt0_go(SB),NOSPLIT,$0
 	MOVL	SP, (g_stack+stack_hi)(BP)
 	
 	// find out information about the processor we're on
-#ifdef GOOS_nacl // NaCl doesn't like PUSHFL/POPFL
-	JMP 	has_cpuid
-#else
-	// first see if CPUID instruction is supported.
-	PUSHFL
-	PUSHFL
-	XORL	$(1<<21), 0(SP) // flip ID bit
-	POPFL
-	PUSHFL
-	POPL	AX
-	XORL	0(SP), AX
-	POPFL	// restore EFLAGS
-	TESTL	$(1<<21), AX
-	JNE 	has_cpuid
-#endif
-
-bad_proc: // show that the program requires MMX.
-	MOVL	$2, 0(SP)
-	MOVL	$bad_proc_msg<>(SB), 4(SP)
-	MOVL	$0x3d, 8(SP)
-	CALL	runtime·write(SB)
-	MOVL	$1, 0(SP)
-	CALL	runtime·exit(SB)
-	INT	$3
-
-has_cpuid:
 	MOVL	$0, AX
 	CPUID
 	MOVL	AX, SI
@@ -80,7 +54,6 @@ notintel:
 	// Check for MMX support
 	TESTL	$(1<<23), DX // MMX
 	SETNE	runtime·support_mmx(SB)
-	JZ	bad_proc
 
 	TESTL	$(1<<26), DX // SSE2
 	SETNE	runtime·support_sse2(SB)
@@ -226,17 +199,6 @@ ok:
 
 	INT $3
 	RET
-
-DATA	bad_proc_msg<>+0x00(SB)/8, $"This pro"
-DATA	bad_proc_msg<>+0x08(SB)/8, $"gram can"
-DATA	bad_proc_msg<>+0x10(SB)/8, $" only be"
-DATA	bad_proc_msg<>+0x18(SB)/8, $" run on "
-DATA	bad_proc_msg<>+0x20(SB)/8, $"processo"
-DATA	bad_proc_msg<>+0x28(SB)/8, $"rs with "
-DATA	bad_proc_msg<>+0x30(SB)/8, $"MMX supp"
-DATA	bad_proc_msg<>+0x38(SB)/4, $"ort."
-DATA	bad_proc_msg<>+0x3c(SB)/1, $0xa
-GLOBL	bad_proc_msg<>(SB), RODATA, $0x3d
 
 DATA	runtime·mainPC+0(SB)/4,$runtime·main(SB)
 GLOBL	runtime·mainPC(SB),RODATA,$4
