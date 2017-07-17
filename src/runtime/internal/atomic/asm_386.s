@@ -123,6 +123,8 @@ TEXT runtime∕internal∕atomic·Load64(SB), NOSPLIT, $0-12
 	TESTL	$7, AX
 	JZ	2(PC)
 	MOVL	0, AX // crash with nil ptr deref
+	CMPB	runtime·support_mmx(SB), $1
+	JNE	load64_nommx
 	LEAL	ret_lo+4(FP), BX
 	// MOVQ (%EAX), %MM0
 	BYTE $0x0f; BYTE $0x6f; BYTE $0x00
@@ -132,17 +134,28 @@ TEXT runtime∕internal∕atomic·Load64(SB), NOSPLIT, $0-12
 	BYTE $0x0F; BYTE $0x77
 	RET
 
+load64_nommx:
+	MOVL	DX, CX
+	MOVL	AX, BX
+	LOCK
+	CMPXCHG8B (AX)
+	MOVL	AX, ret_lo+4(FP)
+	MOVL	DX, ret_hi+8(FP)
+	RET
+
 // void runtime∕internal∕atomic·Store64(uint64 volatile* addr, uint64 v);
 TEXT runtime∕internal∕atomic·Store64(SB), NOSPLIT, $0-12
-	MOVL	ptr+0(FP), AX
-	TESTL	$7, AX
+	MOVL	ptr+0(FP), SI
+	TESTL	$7, SI
 	JZ	2(PC)
-	MOVL	0, AX // crash with nil ptr deref
+	MOVL	0, SI // crash with nil ptr deref
+	CMPB	runtime·support_mmx(SB), $1
+	JNE	store64_nommx
 	// MOVQ and EMMS were introduced on the Pentium MMX.
 	// MOVQ 0x8(%ESP), %MM0
 	BYTE $0x0f; BYTE $0x6f; BYTE $0x44; BYTE $0x24; BYTE $0x08
-	// MOVQ %MM0, (%EAX)
-	BYTE $0x0f; BYTE $0x7f; BYTE $0x00 
+	// MOVQ %MM0, (%ESI)
+	BYTE $0x0f; BYTE $0x7f; BYTE $0x06
 	// EMMS
 	BYTE $0x0F; BYTE $0x77
 	// This is essentially a no-op, but it provides required memory fencing.
@@ -150,6 +163,15 @@ TEXT runtime∕internal∕atomic·Store64(SB), NOSPLIT, $0-12
 	MOVL	$0, AX
 	LOCK
 	XADDL	AX, (SP)
+	RET
+
+store64_nommx:
+	MOVL	val_lo+4(FP), BX
+	MOVL	val_hi+8(FP), CX
+store64_loop:
+	LOCK
+	CMPXCHG8B (SI)
+	JNE	store64_loop
 	RET
 
 // void	runtime∕internal∕atomic·Or8(byte volatile*, byte);

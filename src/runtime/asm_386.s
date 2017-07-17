@@ -79,6 +79,7 @@ notintel:
 
 	// Check for MMX support
 	TESTL	$(1<<23), DX // MMX
+	SETNE	runtime·support_mmx(SB)
 	JZ	bad_proc
 
 	TESTL	$(1<<26), DX // SSE2

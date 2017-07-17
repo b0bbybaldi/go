@@ -741,6 +741,7 @@ var (
 	support_erms         bool
 	support_osxsave      bool
 	support_popcnt       bool
+	support_mmx          bool
 	support_sse2         bool
 	support_sse41        bool
 	support_sse42        bool

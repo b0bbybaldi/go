@@ -157,12 +157,23 @@ TEXT ·LoadUint64(SB),NOSPLIT,$0-12
 	TESTL	$7, AX
 	JZ	2(PC)
 	MOVL	0, AX // crash with nil ptr deref
+	CMPB	runtime·support_mmx(SB), $1
+	JNE	load64_nommx
 	// MOVQ and EMMS were introduced on the Pentium MMX.
 	// MOVQ (%EAX), %MM0
 	BYTE $0x0f; BYTE $0x6f; BYTE $0x00
 	// MOVQ %MM0, 0x8(%ESP)
 	BYTE $0x0f; BYTE $0x7f; BYTE $0x44; BYTE $0x24; BYTE $0x08
 	EMMS
+	RET
+
+load64_nommx:
+	MOVL	DX, CX
+	MOVL	AX, BX
+	LOCK
+	CMPXCHG8B (AX)
+	MOVL	AX, ret_lo+4(FP)
+	MOVL	DX, ret_hi+8(FP)
 	RET
 
 TEXT ·LoadUintptr(SB),NOSPLIT,$0-8
@@ -184,21 +195,32 @@ TEXT ·StoreInt64(SB),NOSPLIT,$0-12
 	JMP	·StoreUint64(SB)
 
 TEXT ·StoreUint64(SB),NOSPLIT,$0-12
-	MOVL	addr+0(FP), AX
-	TESTL	$7, AX
+	MOVL	addr+0(FP), SI
+	TESTL	$7, SI
 	JZ	2(PC)
-	MOVL	0, AX // crash with nil ptr deref
+	MOVL	0, SI // crash with nil ptr deref
+	CMPB	runtime·support_mmx(SB), $1
+	JNE	store64_nommx
 	// MOVQ and EMMS were introduced on the Pentium MMX.
 	// MOVQ 0x8(%ESP), %MM0
 	BYTE $0x0f; BYTE $0x6f; BYTE $0x44; BYTE $0x24; BYTE $0x08
-	// MOVQ %MM0, (%EAX)
-	BYTE $0x0f; BYTE $0x7f; BYTE $0x00 
+	// MOVQ %MM0, (%ESI)
+	BYTE $0x0f; BYTE $0x7f; BYTE $0x06
 	EMMS
 	// This is essentially a no-op, but it provides required memory fencing.
 	// It can be replaced with MFENCE, but MFENCE was introduced only on the Pentium4 (SSE2).
 	XORL	AX, AX
 	LOCK
 	XADDL	AX, (SP)
+	RET
+
+store64_nommx:
+	MOVL	val_lo+4(FP), BX
+	MOVL	val_hi+8(FP), CX
+store64_loop:
+	LOCK
+	CMPXCHG8B (SI)
+	JNE	store64_loop
 	RET
 
 TEXT ·StoreUintptr(SB),NOSPLIT,$0-8
