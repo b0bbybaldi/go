@@ -16,7 +16,7 @@ func Init(arch *gc.Arch) {
 	arch.LinkArch = &x86.Link386
 	arch.REGSP = x86.REGSP
 	switch v := objabi.GO386; v {
-	case "387":
+	case "387", "quark":
 		arch.Use387 = true
 		arch.SSAGenValue = ssaGenValue387
 		arch.SSAGenBlock = ssaGenBlock387

@@ -1965,6 +1965,8 @@ func span6(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 	}
 }
 
+var isQuark = (objabi.GO386 == "quark")
+
 func instinit(ctxt *obj.Link) {
 	if ycover[0] != 0 {
 		// Already initialized; stop now.
@@ -1982,6 +1984,11 @@ func instinit(ctxt *obj.Link) {
 
 	for i := 1; optab[i].as != 0; i++ {
 		c := optab[i].as
+
+		if isQuark && c == ALOCK {
+			optab[i].op = [23]uint8{}
+		}
+
 		if opindex[c&obj.AMask] != nil {
 			ctxt.Diag("phase error in optab: %d (%v)", i, c)
 		}
