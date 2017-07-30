@@ -16,7 +16,7 @@ func Init() {
 	gc.Thearch.LinkArch = &x86.Link386
 	gc.Thearch.REGSP = x86.REGSP
 	switch v := obj.GO386; v {
-	case "387":
+	case "387", "quark":
 		gc.Thearch.Use387 = true
 	case "sse2":
 	default:
