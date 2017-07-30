@@ -2015,11 +2015,18 @@ func span6(ctxt *obj.Link, s *obj.LSym) {
 	}
 }
 
+var isQuark = (obj.Getgo386() == "quark")
+
 func instinit() {
 	var c int
 
 	for i := 1; optab[i].as != 0; i++ {
 		c = int(optab[i].as)
+
+		if isQuark && c == ALOCK {
+			optab[i].op = [23]uint8{}
+		}
+
 		if opindex[c&obj.AMask] != nil {
 			log.Fatalf("phase error in optab: %d (%v)", i, obj.Aconv(c))
 		}
